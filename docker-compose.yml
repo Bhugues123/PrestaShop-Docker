@@ -1,0 +1,80 @@
+version: "3"
+services:
+  webserver:
+    image: nginx:latest
+    networks:
+      yournetwork:
+    ports:
+      - 80:80
+      - 443:443
+    restart: always
+    volumes:
+      - /home/debian/project/nginx/conf/:/etc/nginx/conf.d/:ro
+      - /home/debian/project/certbot/www:/var/www/certbot/:ro
+      - /home/debian/project/certbot/conf/:/etc/nginx/ssl/:ro
+
+  certbot:
+    image: certbot/certbot:latest
+    networks:
+      yournetwork:
+    volumes:
+      - /home/debian/project/certbot/www/:/var/www/certbot/:rw
+      - /home/debian/project/certbot/conf/:/etc/letsencrypt/:rw
+
+  prestashop:
+    #image: prestashop/prestashop:<<version>>
+    #image: prestashop/prestashop:1.7.6.7
+    image: prestashop/prestashop
+    networks:
+      yournetwork:
+    ports:
+      - 8181:80
+    restart: always
+    links:
+      - mariadb:mariadb
+    depends_on:
+      - mariadb
+    volumes:
+      - /home/debian/project/prestashop:/var/www/html
+      - /home/debian/project/prestashop/modules:/var/www/html/modules
+      - /home/debian/project/prestashop/themes:/var/www/html/themes
+      - /home/debian/project/prestashop/override:/var/www/html/override
+    environment:
+      - PS_DEV_MODE=1
+      - DB_SERVER=mariadb
+      - DB_USER=root
+      - DB_PASSWD=mycustompassword
+      - DB_NAME=prestashop
+      - PS_INSTALL_AUTO=0
+
+  mariadb:
+    image: mariadb
+    networks:
+      yournetwork:
+    ports:
+      - 3306:3306
+    restart: always
+    volumes:
+      - /home/debian/project/bdd:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=mycustompassword
+      - MYSQL_DATABASE=prestashop
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    networks:
+      yournetwork:
+    links:
+      - mariadb:mariadb
+    ports:
+      - 1235:80
+    depends_on:
+      - mariadb
+    environment:
+      - PMA_HOST=mariadb
+      #- PMA_USER=root
+      #- PMA_PASSWORD=mycustompassword
+
+networks:
+  yournetwork:
+    external: true
